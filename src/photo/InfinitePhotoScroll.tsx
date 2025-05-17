@@ -4,17 +4,20 @@ import useSwrInfinite from 'swr/infinite';
 import {
   ReactNode,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
 } from 'react';
-import SiteGrid from '@/components/SiteGrid';
+import AppGrid from '@/components/AppGrid';
 import Spinner from '@/components/Spinner';
 import { getPhotosCachedAction, getPhotosAction } from '@/photo/actions';
 import { Photo } from '.';
+import { PhotoSetCategory } from '../category';
 import { clsx } from 'clsx/lite';
 import { useAppState } from '@/state/AppState';
-import { Camera } from '@/camera';
-import { FilmSimulation } from '@/simulation';
+import { GetPhotosOptions } from './db';
+import useVisible from '@/utility/useVisible';
+import { ADMIN_DB_OPTIMIZE_ENABLED } from '@/app/config';
 
 export type RevalidatePhoto = (
   photoId: string,
@@ -25,9 +28,13 @@ export default function InfinitePhotoScroll({
   cacheKey,
   initialOffset,
   itemsPerPage,
-  tag,
+  sortBy,
   camera,
-  simulation,
+  lens,
+  tag,
+  recipe,
+  film,
+  focal,
   wrapMoreButtonInGrid,
   useCachedPhotos = true,
   includeHiddenPhotos,
@@ -35,9 +42,7 @@ export default function InfinitePhotoScroll({
 }: {
   initialOffset: number
   itemsPerPage: number
-  tag?: string
-  camera?: Camera
-  simulation?: FilmSimulation
+  sortBy?: GetPhotosOptions['sortBy']
   cacheKey: string
   wrapMoreButtonInGrid?: boolean
   useCachedPhotos?: boolean
@@ -47,7 +52,7 @@ export default function InfinitePhotoScroll({
     onLastPhotoVisible: () => void
     revalidatePhoto?: RevalidatePhoto
   }) => ReactNode
-}) {
+} & PhotoSetCategory) {
   const { swrTimestamp, isUserSignedIn } = useAppState();
 
   const key = `${swrTimestamp}-${cacheKey}`;
@@ -58,45 +63,53 @@ export default function InfinitePhotoScroll({
       : [key, size]
     , [key]);
 
-  const fetcher = useCallback(([_key, size]: [string, number]) =>
-    useCachedPhotos
-      ? getPhotosCachedAction({
-        offset: initialOffset + size * itemsPerPage,
-        limit: itemsPerPage,
-        hidden: includeHiddenPhotos ? 'include' : 'exclude',
-        tag,
-        camera,
-        simulation,
-      })
-      : getPhotosAction({
-        offset: initialOffset + size * itemsPerPage,
-        limit: itemsPerPage,
-        hidden: includeHiddenPhotos ? 'include' : 'exclude',
-        tag,
-        camera,
-        simulation,
-      })
+  const fetcher = useCallback((
+    [_key, size]: [string, number],
+    warmOnly?: boolean,
+  ) =>
+    (useCachedPhotos ? getPhotosCachedAction : getPhotosAction)({
+      offset: initialOffset + size * itemsPerPage,
+      sortBy,
+      limit: itemsPerPage,
+      hidden: includeHiddenPhotos ? 'include' : 'exclude',
+      camera,
+      lens,
+      tag,
+      recipe,
+      film,
+      focal,
+    }, warmOnly)
   , [
     useCachedPhotos,
+    sortBy,
     initialOffset,
     itemsPerPage,
     includeHiddenPhotos,
-    tag,
     camera,
-    simulation,
+    lens,
+    tag,
+    recipe,
+    film,
+    focal,
   ]);
 
-  const { data, isLoading, isValidating, error, mutate, setSize } =
+  const { data, isLoading, isValidating, error, mutate, size, setSize } =
     useSwrInfinite<Photo[]>(
       keyGenerator,
       fetcher,
       {
-        initialSize: 2,
+        initialSize: ADMIN_DB_OPTIMIZE_ENABLED ? 0 : 2,
         revalidateFirstPage: false,
         revalidateOnFocus: Boolean(isUserSignedIn),
         revalidateOnReconnect: Boolean(isUserSignedIn),
       },
     );
+
+  useEffect(() => {
+    if (ADMIN_DB_OPTIMIZE_ENABLED) {
+      fetcher(['', 0], true);
+    }
+  }, [fetcher]);
 
   const buttonContainerRef = useRef<HTMLDivElement>(null);
   
@@ -125,6 +138,12 @@ export default function InfinitePhotoScroll({
     },
   } as any), [data, mutate]);
 
+  useVisible({ ref: buttonContainerRef, onVisible: () => {
+    if (ADMIN_DB_OPTIMIZE_ENABLED && size === 0) {
+      advance();
+    }
+  }});
+
   const renderMoreButton = () =>
     <div ref={buttonContainerRef}>
       <button
@@ -151,7 +170,7 @@ export default function InfinitePhotoScroll({
         revalidatePhoto,
       })}
       {!isFinished && (wrapMoreButtonInGrid
-        ? <SiteGrid contentMain={renderMoreButton()} />
+        ? <AppGrid contentMain={renderMoreButton()} />
         : renderMoreButton())}
     </div>
   );

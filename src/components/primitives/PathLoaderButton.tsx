@@ -1,37 +1,25 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ReactNode, useEffect, useState, useTransition } from 'react';
-import { SpinnerColor } from '../Spinner';
+import { ComponentProps, useEffect, useState, useTransition } from 'react';
 import LoaderButton from '@/components/primitives/LoaderButton';
 
 export default function PathLoaderButton({
   path,
-  icon,
   prefetch,
   loaderDelay = 100,
   shouldScroll = true,
   shouldReplace,
-  spinnerColor,
-  shouldPreventDefault,
-  styleAs,
-  hideTextOnMobile,
-  className,
+  isLoading,
   children,
+  ...props
 }: {
   path: string
-  icon?: ReactNode
   prefetch?: boolean
   loaderDelay?: number
   shouldScroll?: boolean
   shouldReplace?: boolean
-  spinnerColor?: SpinnerColor
-  shouldPreventDefault?: boolean
-  styleAs?: 'button' | 'link' | 'link-without-hover'
-  hideTextOnMobile?: boolean
-  className?: string
-  children?: ReactNode
-}) {
+} & ComponentProps<typeof LoaderButton>) {
   const router = useRouter();
 
   const [isPending, startTransition] = useTransition();
@@ -57,8 +45,7 @@ export default function PathLoaderButton({
 
   return (
     <LoaderButton
-      icon={icon}
-      className={className}
+      {...props}
       onClick={() => {
         startTransition(() => {
           if (shouldReplace) {
@@ -68,11 +55,7 @@ export default function PathLoaderButton({
           }
         });
       }}
-      shouldPreventDefault={shouldPreventDefault}
-      isLoading={shouldShowLoader}
-      spinnerColor={spinnerColor}
-      styleAs={styleAs}
-      hideTextOnMobile={hideTextOnMobile}
+      isLoading={shouldShowLoader || isLoading}
     >
       {children}
     </LoaderButton>

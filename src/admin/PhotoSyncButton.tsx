@@ -1,61 +1,73 @@
-import FormWithConfirm from '@/components/FormWithConfirm';
-import SubmitButtonWithStatus from '@/components/SubmitButtonWithStatus';
-import IconGrSync from '@/site/IconGrSync';
-import { clsx } from 'clsx/lite';
-import { ComponentProps } from 'react';
+import LoaderButton from '@/components/primitives/LoaderButton';
+import { syncPhotoAction } from '@/photo/actions';
+import IconGrSync from '@/components/icons/IconGrSync';
+import { toastSuccess } from '@/toast';
+import { ComponentProps, useRef, useState } from 'react';
+import Tooltip from '@/components/Tooltip';
+import clsx from 'clsx/lite';
+import useScrollIntoView from '@/utility/useScrollIntoView';
+import { Photo } from '@/photo';
+import { syncPhotoConfirmText } from './confirm';
 
 export default function PhotoSyncButton({
-  action,
-  label,
-  onFormSubmit,
-  formData: { photoId, photoUrl } = {},
-  photoTitle,
+  photo,
+  onSyncComplete,
+  className,
+  isSyncingExternal,
   hasAiTextGeneration,
+  disabled,
   shouldConfirm,
   shouldToast,
+  shouldScrollIntoViewOnExternalSync,
 }: {
-  action: (formData: FormData) => void
-  label?: string
-  formData?: {
-    photoId?: string
-    photoUrl?: string
-  }
-  photoTitle?: string
-  hasAiTextGeneration?: boolean
+  photo: Photo
+  onSyncComplete?: () => void
+  isSyncingExternal?: boolean
+  hasAiTextGeneration: boolean
   shouldConfirm?: boolean
   shouldToast?: boolean
-} & ComponentProps<typeof SubmitButtonWithStatus>) {
-  const confirmText = ['Overwrite'];
-  if (photoTitle) { confirmText.push(`"${photoTitle}"`); }
-  confirmText.push('data from original file?');
-  if (hasAiTextGeneration) { confirmText.push(
-    'AI text will be generated for undefined fields.'); }
-  confirmText.push('This action cannot be undone.');
+  shouldScrollIntoViewOnExternalSync?: boolean
+} & ComponentProps<typeof LoaderButton>) {
+  const ref = useRef<HTMLButtonElement>(null);
+
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  useScrollIntoView({
+    ref,
+    shouldScrollIntoView:
+      isSyncingExternal &&
+      shouldScrollIntoViewOnExternalSync,
+  });
+
   return (
-    <FormWithConfirm
-      action={action}
-      confirmText={shouldConfirm ? confirmText.join(' ') : undefined}
-    >
-      {photoId && 
-        <input name="photoId" value={photoId} hidden readOnly />}
-      {photoUrl && 
-        <input name="photoUrl" value={photoUrl} hidden readOnly />}
-      <SubmitButtonWithStatus
-        title="Update photo from original file"
+    <Tooltip content="Regenerate photo data">
+      <LoaderButton
+        ref={ref}
+        className={clsx('scroll-mt-8', className)}
         icon={<IconGrSync
-          className={clsx(
-            'translate-y-[0.5px] translate-x-[0.5px]',
-            label && 'sm:translate-x-[-0.5px]',
-          )} />}
-        onFormSubmitToastMessage={shouldToast
-          ? photoTitle
-            ? `"${photoTitle}" data synced`
-            : 'Data synced'
-          : undefined}
-        onFormSubmit={onFormSubmit}
-      >
-        {label}
-      </SubmitButtonWithStatus>
-    </FormWithConfirm>
+          className="translate-y-[0.5px] translate-x-[0.5px]"
+        />}
+        onClick={() => {
+          if (
+            !shouldConfirm ||
+            window.confirm(syncPhotoConfirmText(photo, hasAiTextGeneration))
+          ) {
+            setIsSyncing(true);
+            syncPhotoAction(photo.id)
+              .then(() => {
+                onSyncComplete?.();
+                if (shouldToast) {
+                  toastSuccess(photo.title
+                    ? `"${photo.title}" data synced`
+                    : 'Data synced');
+                }
+              })
+              .finally(() => setIsSyncing(false));
+          }
+        }}
+        isLoading={isSyncing || isSyncingExternal}
+        disabled={disabled}
+      />
+    </Tooltip>
   );
 }

@@ -1,6 +1,6 @@
-import { clsx } from 'clsx/lite';
 import { ReactNode } from 'react';
 import { BiErrorAlt } from 'react-icons/bi';
+import Note from './Note';
 
 export default function ErrorNote({
   className,
@@ -10,20 +10,13 @@ export default function ErrorNote({
   children: ReactNode
 }) {
   return (
-    <div className={clsx(
-      'flex w-full items-center gap-3',
-      'px-3 py-2 border',
-      'text-red-600 dark:text-red-500/90',
-      'bg-red-50/50 dark:bg-red-950/50',
-      'border-red-100 dark:border-red-950',
-      'rounded-md',
-      className,
-    )}>
-      <BiErrorAlt
-        size={18}
-        className="text-red-600/80 dark:text-red-500/70 shrink-0"
-      />
+    <Note
+      color="red"
+      padding="tight"
+      className={className}
+      icon={<BiErrorAlt size={18} className="translate-x-[0.5px]" />}
+    >
       {children}
-    </div>
+    </Note>
   );
 }

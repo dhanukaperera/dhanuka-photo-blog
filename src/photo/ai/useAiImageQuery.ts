@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { streamAiImageQueryAction } from '../actions';
 import { readStreamableValue } from 'ai/rsc';
-import { AiImageQuery, cleanUpAiTextResponse } from '.';
+import { AiImageQuery } from '.';
 
 export default function useAiImageQuery(
   imageBase64: string | undefined,
@@ -21,9 +21,7 @@ export default function useAiImageQuery(
           query,
         );
         for await (const text of readStreamableValue(textStream)) {
-          setText(current =>
-            cleanUpAiTextResponse(`${current}${text ?? ''}`) ?? ''
-          );
+          setText(current => `${current}${text ?? ''}`);
         }
         setIsLoading(false);
       } catch (e) {
@@ -40,7 +38,7 @@ export default function useAiImageQuery(
   }, []);
 
   // Withhold streaming text if it's a null response
-  const isTextError = text.toLocaleLowerCase().startsWith('sorry');
+  const isTextError = /^(I'*m )*sorry/i.test(text);
 
   return [
     request,

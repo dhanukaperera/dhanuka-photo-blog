@@ -1,16 +1,20 @@
 'use server';
 
 import {
-  KEY_CALLBACK_URL,
-  KEY_CREDENTIALS_SIGN_IN_ERROR,
-  KEY_CREDENTIALS_SIGN_IN_ERROR_URL,
   auth,
   signIn,
   signOut,
-} from '@/auth';
-import { PATH_ADMIN_PHOTOS, PATH_ROOT } from '@/site/paths';
+} from '@/auth/server';
 import type { Session } from 'next-auth';
 import { redirect } from 'next/navigation';
+import {
+  generateAuthSecret,
+  KEY_CALLBACK_URL,
+  KEY_CREDENTIALS_CALLBACK_ROUTE_ERROR_URL,
+  KEY_CREDENTIALS_SIGN_IN_ERROR,
+  KEY_CREDENTIALS_SIGN_IN_ERROR_URL,
+  KEY_CREDENTIALS_SUCCESS,
+} from '.';
 
 export const signInAction = async (
   _prevState: string | undefined,
@@ -21,7 +25,9 @@ export const signInAction = async (
   } catch (error) {
     if (
       `${error}`.includes(KEY_CREDENTIALS_SIGN_IN_ERROR) || 
-      `${error}`.includes(KEY_CREDENTIALS_SIGN_IN_ERROR_URL)
+      `${error}`.includes(KEY_CREDENTIALS_SIGN_IN_ERROR_URL) ||
+      // New error thrown in next-auth 5.0.0-beta.19 for incorrect credentials
+      `${error}`.includes(KEY_CREDENTIALS_CALLBACK_ROUTE_ERROR_URL)
     ) {
       // Return credentials error to display on sign-in page.
       return KEY_CREDENTIALS_SIGN_IN_ERROR;
@@ -34,13 +40,18 @@ export const signInAction = async (
       throw error;
     }
   }
-  redirect(formData.get(KEY_CALLBACK_URL) as string || PATH_ADMIN_PHOTOS);
+  if (formData.get(KEY_CALLBACK_URL)) {
+    redirect(formData.get(KEY_CALLBACK_URL) as string);
+  }
+  return KEY_CREDENTIALS_SUCCESS;
 };
 
-export const signOutAndRedirectAction = async () =>
-  signOut({ redirectTo: PATH_ROOT });
+export const signOutAction = async () =>
+  signOut({ redirect: false });
 
-export const getAuthAction = () => auth();
+export const getAuthAction = async () => auth();
 
-export const logClientAuthUpdate = (data: Session | null | undefined) =>
+export const logClientAuthUpdate = async (data: Session | null | undefined) =>
   console.log('Client auth update', data);
+
+export const generateAuthSecretAction = async () => generateAuthSecret();

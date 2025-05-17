@@ -6,13 +6,6 @@ import { clsx } from 'clsx/lite';
 import { toastSuccess } from '@/toast';
 import LoaderButton from '@/components/primitives/LoaderButton';
 
-interface Props extends ComponentProps<typeof LoaderButton> {
-  onFormStatusChange?: (pending: boolean) => void
-  onFormSubmitToastMessage?: string
-  onFormSubmit?: () => void
-  primary?: boolean
-}
-
 export default function SubmitButtonWithStatus({
   icon,
   styleAs,
@@ -23,10 +16,13 @@ export default function SubmitButtonWithStatus({
   children,
   disabled,
   className,
-  primary,
   type: _type,
   ...buttonProps
-}: Props) {
+}: {
+  onFormStatusChange?: (pending: boolean) => void
+  onFormSubmitToastMessage?: string
+  onFormSubmit?: () => void
+} & ComponentProps<typeof LoaderButton>) {
   const { pending } = useFormStatus();
 
   const pendingPrevious = useRef(pending);
@@ -47,18 +43,17 @@ export default function SubmitButtonWithStatus({
 
   return (
     <LoaderButton
+      {...buttonProps}
       type="submit"
       disabled={disabled}
       className={clsx(
-        className,
         'inline-flex items-center gap-2',
-        primary && 'primary',
+        className,
       )}
       icon={icon}
       spinnerColor={spinnerColor}
       styleAs={styleAs}
       isLoading={pending}
-      {...buttonProps}
     >
       {children}
     </LoaderButton>
