@@ -2,22 +2,25 @@ import FormWithConfirm from '@/components/FormWithConfirm';
 import { deletePhotoTagGloballyAction } from '@/photo/actions';
 import AdminTable from '@/admin/AdminTable';
 import { Fragment } from 'react';
-import DeleteButton from '@/admin/DeleteButton';
+import DeleteFormButton from '@/admin/DeleteFormButton';
 import { photoQuantityText } from '@/photo';
-import { TagsWithMeta, formatTag, sortTagsObject } from '@/tag';
+import { Tags, formatTag, sortTags } from '@/tag';
 import EditButton from '@/admin/EditButton';
-import { pathForAdminTagEdit } from '@/site/paths';
+import { pathForAdminTagEdit } from '@/app/paths';
 import { clsx } from 'clsx/lite';
 import AdminTagBadge from './AdminTagBadge';
+import { getAppText } from '@/i18n/state/server';
 
-export default function AdminTagTable({
+export default async function AdminTagTable({
   tags,
 }: {
-  tags: TagsWithMeta
+  tags: Tags
 }) {
+  const appText = await getAppText();
+
   return (
     <AdminTable>
-      {sortTagsObject(tags).map(({ tag, count }) =>
+      {sortTags(tags).map(({ tag, count }) =>
         <Fragment key={tag}>
           <div className="pr-2 col-span-2">
             <AdminTagBadge {...{ tag, count }} />
@@ -31,10 +34,10 @@ export default function AdminTagTable({
               action={deletePhotoTagGloballyAction}
               confirmText={
                 // eslint-disable-next-line max-len
-                `Are you sure you want to remove "${formatTag(tag)}" from ${photoQuantityText(count, false).toLowerCase()}?`}
+                `Are you sure you want to remove "${formatTag(tag)}" from ${photoQuantityText(count, appText, false, false).toLowerCase()}?`}
             >
               <input type="hidden" name="tag" value={tag} />
-              <DeleteButton clearLocalState />
+              <DeleteFormButton clearLocalState />
             </FormWithConfirm>
           </div>
         </Fragment>)}

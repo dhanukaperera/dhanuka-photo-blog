@@ -1,18 +1,19 @@
+'use client';
+
 import { Photo } from '.';
+import { PhotoSetCategory } from '../category';
 import PhotoMedium from './PhotoMedium';
 import { clsx } from 'clsx/lite';
 import AnimateItems from '@/components/AnimateItems';
-import { Camera } from '@/camera';
-import { FilmSimulation } from '@/simulation';
-import { GRID_ASPECT_RATIO, HIGH_DENSITY_GRID } from '@/site/config';
+import { GRID_ASPECT_RATIO } from '@/app/config';
+import { useAppState } from '@/state/AppState';
+import SelectTileOverlay from '@/components/SelectTileOverlay';
+import { ReactNode } from 'react';
+import { GRID_GAP_CLASSNAME } from '@/components';
 
 export default function PhotoGrid({
   photos,
   selectedPhoto,
-  tag,
-  camera,
-  simulation,
-  focal,
   photoPriority,
   fast,
   animate = true,
@@ -21,33 +22,40 @@ export default function PhotoGrid({
   staggerOnFirstLoadOnly = true,
   additionalTile,
   small,
+  canSelect,
   onLastPhotoVisible,
   onAnimationComplete,
+  ...categories
 }: {
   photos: Photo[]
   selectedPhoto?: Photo
-  tag?: string
-  camera?: Camera
-  simulation?: FilmSimulation
-  focal?: number
   photoPriority?: boolean
   fast?: boolean
   animate?: boolean
   canStart?: boolean
   animateOnFirstLoadOnly?: boolean
   staggerOnFirstLoadOnly?: boolean
-  additionalTile?: JSX.Element
+  additionalTile?: ReactNode
   small?: boolean
+  canSelect?: boolean
   onLastPhotoVisible?: () => void
   onAnimationComplete?: () => void
-}) {
+} & PhotoSetCategory) {
+  const {
+    isUserSignedIn,
+    selectedPhotoIds,
+    setSelectedPhotoIds,
+    isGridHighDensity,
+  } = useAppState();
+
   return (
     <AnimateItems
       className={clsx(
-        'grid gap-0.5 sm:gap-1',
+        'grid',
+        GRID_GAP_CLASSNAME,
         small
           ? 'grid-cols-3 xs:grid-cols-6'
-          : HIGH_DENSITY_GRID
+          : isGridHighDensity
             ? 'grid-cols-2 xs:grid-cols-4 lg:grid-cols-6'
             : 'grid-cols-2 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4',
         'items-center',
@@ -60,12 +68,14 @@ export default function PhotoGrid({
       animateOnFirstLoadOnly={animateOnFirstLoadOnly}
       staggerOnFirstLoadOnly={staggerOnFirstLoadOnly}
       onAnimationComplete={onAnimationComplete}
-      items={photos.map((photo, index) =>
-        <div
+      items={photos.map((photo, index) =>{
+        const isSelected = selectedPhotoIds?.includes(photo.id) ?? false;
+        return <div
           key={photo.id}
-          className={GRID_ASPECT_RATIO !== 0
-            ? 'flex relative overflow-hidden'
-            : undefined}
+          className={clsx(
+            'flex relative overflow-hidden',
+            'group',
+          )}
           style={{
             ...GRID_ASPECT_RATIO !== 0 && {
               aspectRatio: GRID_ASPECT_RATIO,
@@ -73,13 +83,14 @@ export default function PhotoGrid({
           }}
         >
           <PhotoMedium
-            className="flex w-full h-full"
+            className={clsx(
+              'flex w-full h-full',
+              // Prevent photo navigation when selecting
+              selectedPhotoIds?.length !== undefined && 'pointer-events-none',
+            )}
             {...{
               photo,
-              tag,
-              camera,
-              simulation,
-              focal,
+              ...categories,
               selected: photo.id === selectedPhoto?.id,
               priority: photoPriority,
               onVisible: index === photos.length - 1
@@ -87,7 +98,16 @@ export default function PhotoGrid({
                 : undefined,
             }}
           />
-        </div>).concat(additionalTile ?? [])}
+          {isUserSignedIn && canSelect && selectedPhotoIds !== undefined &&
+            <SelectTileOverlay
+              isSelected={isSelected}
+              onSelectChange={() => setSelectedPhotoIds?.(isSelected
+                ? (selectedPhotoIds ?? []).filter(id => id !== photo.id)
+                : (selectedPhotoIds ?? []).concat(photo.id),
+              )}
+            />}
+        </div>;
+      }).concat(additionalTile ? <>{additionalTile}</> : [])}
       itemKeys={photos.map(photo => photo.id)
         .concat(additionalTile ? ['more'] : [])}
     />

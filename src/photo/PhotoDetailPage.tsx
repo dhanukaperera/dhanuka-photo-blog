@@ -1,18 +1,20 @@
 import AnimateItems from '@/components/AnimateItems';
 import { Photo, PhotoDateRange } from '.';
+import { PhotoSetCategory } from '../category';
 import PhotoLarge from './PhotoLarge';
-import SiteGrid from '@/components/SiteGrid';
+import AppGrid from '@/components/AppGrid';
 import PhotoGrid from './PhotoGrid';
-import { clsx } from 'clsx/lite';
-import PhotoLinks from './PhotoLinks';
 import TagHeader from '@/tag/TagHeader';
-import { Camera } from '@/camera';
 import CameraHeader from '@/camera/CameraHeader';
-import { FilmSimulation } from '@/simulation';
-import FilmSimulationHeader from '@/simulation/FilmSimulationHeader';
+import FilmHeader from '@/film/FilmHeader';
 import { TAG_HIDDEN } from '@/tag';
 import HiddenHeader from '@/tag/HiddenHeader';
 import FocalLengthHeader from '@/focal/FocalLengthHeader';
+import PhotoHeader from './PhotoHeader';
+import RecipeHeader from '@/recipe/RecipeHeader';
+import { ReactNode } from 'react';
+import LensHeader from '@/lens/LensHeader';
+import { AI_TEXT_GENERATION_ENABLED } from '@/app/config';
 
 export default function PhotoDetailPage({
   photo,
@@ -20,7 +22,9 @@ export default function PhotoDetailPage({
   photosGrid,
   tag,
   camera,
-  simulation,
+  lens,
+  film,
+  recipe,
   focal,
   indexNumber,
   count,
@@ -31,77 +35,88 @@ export default function PhotoDetailPage({
   photo: Photo
   photos: Photo[]
   photosGrid?: Photo[]
-  tag?: string
-  camera?: Camera
-  simulation?: FilmSimulation
-  focal?: number
   indexNumber?: number
   count?: number
   dateRange?: PhotoDateRange
   shouldShare?: boolean
   includeFavoriteInAdminMenu?: boolean
-}) {
+} & PhotoSetCategory) {
+  let customHeader: ReactNode | undefined;
+
+  if (tag) {
+    customHeader = tag === TAG_HIDDEN
+      ? <HiddenHeader
+        photos={photos}
+        selectedPhoto={photo}
+        indexNumber={indexNumber}
+        count={count ?? 0}
+      />
+      : <TagHeader
+        key={tag}
+        tag={tag}
+        photos={photos}
+        selectedPhoto={photo}
+        indexNumber={indexNumber}
+        count={count}
+        dateRange={dateRange}
+      />;
+  } else if (camera) {
+    customHeader = <CameraHeader
+      camera={camera}
+      photos={photos}
+      selectedPhoto={photo}
+      indexNumber={indexNumber}
+      count={count}
+      dateRange={dateRange}
+    />;
+  } else if (lens) {
+    customHeader = <LensHeader
+      lens={lens}
+      photos={photos}
+      selectedPhoto={photo}
+      indexNumber={indexNumber}
+      count={count}
+      dateRange={dateRange}
+    />;
+  } else if (film) {
+    customHeader = <FilmHeader
+      film={film}
+      photos={photos}
+      selectedPhoto={photo}
+      indexNumber={indexNumber}
+      count={count}
+      dateRange={dateRange}
+    />;
+  } else if (recipe) {
+    customHeader = <RecipeHeader
+      recipe={recipe}
+      photos={photos}
+      selectedPhoto={photo}
+      indexNumber={indexNumber}
+      count={count}
+    />;
+  } else if (focal) {
+    customHeader = <FocalLengthHeader
+      focal={focal}
+      photos={photos}
+      selectedPhoto={photo}
+      indexNumber={indexNumber}
+      count={count}
+      dateRange={dateRange}
+    />;
+  }
+
   return (
     <div>
-      {tag &&
-        <SiteGrid
-          className="mt-4 mb-8"
-          contentMain={tag === TAG_HIDDEN
-            ? <HiddenHeader
-              photos={photos}
-              selectedPhoto={photo}
-              indexNumber={indexNumber}
-              count={count ?? 0}
-            />
-            : <TagHeader
-              key={tag}
-              tag={tag}
-              photos={photos}
-              selectedPhoto={photo}
-              indexNumber={indexNumber}
-              count={count}
-              dateRange={dateRange}
-            />}
+      <AppGrid
+        className="mt-1.5 mb-6"
+        contentMain={customHeader ?? <PhotoHeader
+          selectedPhoto={photo}
+          photos={photos}
+          recipe={recipe}
+          hasAiTextGeneration={AI_TEXT_GENERATION_ENABLED}
         />}
-      {camera &&
-        <SiteGrid
-          className="mt-4 mb-8"
-          contentMain={
-            <CameraHeader
-              camera={camera}
-              photos={photos}
-              selectedPhoto={photo}
-              indexNumber={indexNumber}
-              count={count}
-              dateRange={dateRange}
-            />}
-        />}
-      {simulation &&
-        <SiteGrid
-          className="mt-4 mb-8"
-          contentMain={
-            <FilmSimulationHeader
-              simulation={simulation}
-              photos={photos}
-              selectedPhoto={photo}
-              indexNumber={indexNumber}
-              count={count}
-              dateRange={dateRange}
-            />}
-        />}
-      {focal &&
-        <SiteGrid
-          className="mt-4 mb-8"
-          contentMain={
-            <FocalLengthHeader
-              focal={focal}
-              photos={photos}
-              selectedPhoto={photo}
-              indexNumber={indexNumber}
-              count={count}
-              dateRange={dateRange}
-            />}
-        />}
+      />
       <AnimateItems
         className="md:mb-8"
         animateFromAppState
@@ -112,51 +127,34 @@ export default function PhotoDetailPage({
             primaryTag={tag}
             priority
             prefetchRelatedLinks
+            showTitle={Boolean(customHeader)}
+            showTitleAsH1
             showCamera={!camera}
-            showSimulation={!simulation}
+            showLens={!lens}
+            showFilm={!film}
+            showRecipe={!recipe}
             shouldShare={shouldShare}
-            shouldShareTag={tag !== undefined}
             shouldShareCamera={camera !== undefined}
-            shouldShareSimulation={simulation !== undefined}
-            shouldScrollOnShare={false}
+            shouldShareLens={lens !== undefined}
+            shouldShareTag={tag !== undefined}
+            shouldShareFilm={film !== undefined}
+            shouldShareRecipe={recipe !== undefined}
+            shouldShareFocalLength={focal !== undefined}
             includeFavoriteInAdminMenu={includeFavoriteInAdminMenu}
+            showAdminKeyCommands
           />,
         ]}
       />
-      <SiteGrid
+      <AppGrid
         sideFirstOnMobile
         contentMain={<PhotoGrid
           photos={photosGrid ?? photos}
           selectedPhoto={photo}
           tag={tag}
           camera={camera}
-          simulation={simulation}
+          film={film}
           focal={focal}
           animateOnFirstLoadOnly
-        />}
-        contentSide={<AnimateItems
-          animateOnFirstLoadOnly
-          type="bottom"
-          items={[
-            <div
-              key="PhotoLinks"
-              className={clsx(
-                'grid grid-cols-2',
-                'gap-0.5 sm:gap-1',
-                'md:flex md:gap-4',
-                'user-select-none',
-              )}
-            >
-              <PhotoLinks {...{
-                photo,
-                photos,
-                tag,
-                camera,
-                simulation,
-                focal,
-              }} />
-            </div>,
-          ]}
         />}
       />
     </div>
